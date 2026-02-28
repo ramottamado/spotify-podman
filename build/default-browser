@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Testing"
+
+# We set directory because default mountpoint is not available on the host
+flatpak-spawn --host --directory=/tmp /usr/bin/xdg-open "$@"

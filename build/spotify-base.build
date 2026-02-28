@@ -1,0 +1,8 @@
+[Unit]
+Description=Spotify Ubuntu Base Image Build
+
+[Build]
+ImageTag=tamado.codes/library/ubuntu-spotify-base:24.04
+File=/var/home/tamado/.config/containers/systemd/Containerfile.base
+Pull=newer
+ForceRM=true

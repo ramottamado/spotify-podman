@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Default Browser
+Exec=/usr/local/bin/default-browser %U
+Terminal=false
+Icon=help
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;

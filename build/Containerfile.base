@@ -1,0 +1,19 @@
+FROM quay.io/toolbx/ubuntu-toolbox:24.04
+
+COPY ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources
+
+RUN echo "deb https://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list
+RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
+
+RUN apt-get update && \
+    apt-get dist-upgrade -y && \
+    apt-get install -y rsync spotify-client pipewire-audio-client-libraries fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk libnotify-bin
+
+RUN mkdir -p /usr/local/share/applications /usr/local/bin
+
+COPY default-browser /usr/local/bin
+COPY entrypoint.sh /usr/local/bin
+COPY org.gnome.Epiphany.desktop /usr/share/applications
+
+RUN chmod a+x /usr/local/bin/entrypoint.sh
+RUN chmod a+x /usr/local/bin/default-browser

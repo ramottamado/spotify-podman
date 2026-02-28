@@ -1,0 +1,8 @@
+[Unit]
+Description=Spotify Image Build
+
+[Build]
+ImageTag=tamado.codes/library/spotify:latest
+File=/var/home/tamado/.config/containers/systemd/Containerfile
+Pull=newer
+ForceRM=true
