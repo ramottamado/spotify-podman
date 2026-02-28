@@ -29,9 +29,8 @@ if podman container exists spotify; then
 
     if [[ $?!=0 ]]; then
         podman container exec spotify spotify "$@"
+        exit 0
     fi
-
-    exit 0
 fi
 
 podman container run --rm --name spotify \
