@@ -6,4 +6,4 @@ fi
 
 xdg-settings set default-web-browser org.gnome.Epiphany.desktop
 
-exec -a "$0" "/usr/share/spotify/spotify" "--enable-features=UseOzonePlatform" "--ozone-platform=x11" "$@"
+exec -a "$0" "/usr/share/spotify/spotify" "$@"

@@ -1,8 +1,12 @@
 [Unit]
 Description=Spotify Image Build
 
+[Service]
+ExecStartPost=/bin/podman image prune -f
+
 [Build]
 ImageTag=tamado.codes/library/spotify:latest
 File=/var/home/tamado/.config/containers/systemd/Containerfile
-Pull=newer
+Pull=never
 ForceRM=true
+PodmanArgs=--no-cache
