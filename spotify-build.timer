@@ -3,8 +3,7 @@ Description=Build Spotify image
 
 [Timer]
 Unit=spotify-build.service
-OnStartupSec=30s
-OnCalendar=*-*-* 00:00:00
+OnCalendar=Fri *-*-* 00:00:00
 Persistent=true
 
 [Install]

@@ -24,6 +24,8 @@ create_wrapper() {
 	cat <<'EOF' >"$HOME"/.local/bin/spotify
 #!/bin/bash
 
+. "${HOME}/.config/user-dirs.dirs"
+
 if podman container exists spotify; then
 	podman container rm spotify
 
@@ -37,8 +39,8 @@ podman container run --rm --name spotify \
 	--log-level error \
 	--mount=type=devpts,destination=/dev/pts \
 	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION --env=DISPLAY --env=LANG \
-	--env=SSH_AUTH_SOCK --env=XAUTHORITY --env=XDG_CURRENT_DESKTOP \
-	--env=XDG_DATA_DIRS --env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
+	--env=XAUTHORITY --env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
+	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
 	--env=XDG_SESSION_DESKTOP --env=XDG_SESSION_TYPE --env=P11_KIT_SERVER_ADDRESS \
 	--volume /dev:/dev:rslave \
 	--volume /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
@@ -46,7 +48,11 @@ podman container run --rm --name spotify \
 	--volume /run/avahi-daemon/socket:/run/avahi-daemon/socket \
 	--volume /run/media:/run/media:rslave \
 	--volume "$HOME/.local/share/spotify:/spotify" \
-	--cgroupns=host --ipc=host --pid=host --security-opt=label=disable \
+	--volume "$XDG_DOWNLOAD_DIR:$XDG_DOWNLOAD_DIR:ro" \
+	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
+	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
+	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
+	--cgroupns=host --security-opt=label=disable \
 	--ulimit=host --userns=keep-id --network=host --pids-limit=2048 \
 	--hostname "$(hostname)" \
 	tamado.codes/library/spotify:latest "$@"
