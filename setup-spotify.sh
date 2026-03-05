@@ -41,19 +41,19 @@ podman container run --rm --name spotify \
 	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION --env=DISPLAY --env=LANG \
 	--env=XAUTHORITY --env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
 	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
-	--env=XDG_SESSION_DESKTOP --env=XDG_SESSION_TYPE --env=P11_KIT_SERVER_ADDRESS \
+	--env=XDG_SESSION_DESKTOP --env=P11_KIT_SERVER_ADDRESS \
 	--volume /dev:/dev:rslave \
 	--volume /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
 	--volume /run/user/${EUID}:/run/user/${EUID} \
 	--volume /run/avahi-daemon/socket:/run/avahi-daemon/socket \
 	--volume /run/media:/run/media:rslave \
-	--volume "$HOME/.local/share/spotify:/spotify" \
+	--volume "$HOME/.local/share/spotify:/root" \
 	--volume "$XDG_DOWNLOAD_DIR:$XDG_DOWNLOAD_DIR:ro" \
 	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
 	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
 	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
 	--cgroupns=host --security-opt=label=disable \
-	--ulimit=host --userns=keep-id --network=host --pids-limit=2048 \
+	--ulimit=host --network=host --user root:root --pids-limit=2048 \
 	--hostname "$(hostname)" \
 	tamado.codes/library/spotify:latest "$@"
 EOF
@@ -66,7 +66,6 @@ create_desktop_file() {
 	podman run --rm \
 		--entrypoint '["/bin/bash", "-c"]' \
 		--security-opt label=disable \
-		--userns keep-id \
 		tamado.codes/library/spotify:latest \
 		'sed -e "/^TryExec.*/d" -e "/^Exec.*/d" /usr/share/spotify/spotify.desktop' >/tmp/spotify.desktop
 
@@ -87,7 +86,6 @@ sync_icons() {
 		--entrypoint '["/bin/bash", "-c"]' \
 		--security-opt label=disable \
 		--volume "$HOME/.local/share/icons/hicolor:/hicolor" \
-		--userns keep-id \
 		tamado.codes/library/spotify:latest \
 		'rsync -rav --prune-empty-dirs --include="*/" --include="spotify-client.png" --exclude="*" /usr/share/icons/hicolor/* /hicolor'
 }

@@ -3,10 +3,8 @@ FROM tamado.codes/library/ubuntu-spotify-base:24.04
 RUN apt-get update && \
     apt-get dist-upgrade -y
 
-USER 1000
+VOLUME ["/root"]
 
-VOLUME ["/spotify"]
-
-WORKDIR /spotify
+WORKDIR /root
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
