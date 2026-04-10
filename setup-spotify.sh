@@ -35,9 +35,11 @@ if podman container exists spotify; then
 	fi
 fi
 
-podman container run --rm --name spotify \
+gnome-session-inhibit --app-id spotify --reason audio --inhibit suspend \
+	podman container run --rm --name spotify \
 	--log-level error \
 	--mount=type=devpts,destination=/dev/pts \
+	--mount=type=bind,source=/tmp,destination=/tmp \
 	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION --env=DISPLAY --env=LANG \
 	--env=XAUTHORITY --env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
 	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
@@ -52,9 +54,8 @@ podman container run --rm --name spotify \
 	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
 	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
 	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
-	--cgroupns=host --security-opt=label=disable \
-	--ulimit=host --network=host --user root:root --pids-limit=2048 \
-	--hostname "$(hostname)" \
+	--security-opt=label=disable --user root:root \
+	--cgroupns=host --ulimit=host --network=host --ipc=host --uts=host \
 	tamado.codes/library/spotify:latest "$@"
 EOF
 
@@ -76,7 +77,7 @@ create_desktop_file() {
 		exit 1
 	fi
 
-	echo "Exec=$(command -v gnome-session-inhibit) --app-id spotify --reason audio --inhibit suspend ${HOME}/.local/bin/spotify %U" >>/tmp/spotify.desktop
+	echo "Exec=${HOME}/.local/bin/spotify %U" >>/tmp/spotify.desktop
 	cp -f /tmp/spotify.desktop "$HOME/.local/share/applications/spotify.desktop"
 }
 

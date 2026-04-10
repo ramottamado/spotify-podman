@@ -2,6 +2,8 @@
 Description=Spotify Image Build
 
 [Service]
+Restart=on-failure
+RestartSec=30s
 ExecStartPost=/bin/podman image prune -f
 
 [Build]
