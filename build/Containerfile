@@ -1,7 +1,7 @@
-FROM tamado.codes/library/ubuntu-spotify-base:24.04
+FROM tamado.codes/library/ubuntu-spotify-base:26.04
 
-RUN apt-get update && \
-    apt-get dist-upgrade -y
+RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y
 
 VOLUME ["/root"]
 

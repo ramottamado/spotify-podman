@@ -1,19 +1,30 @@
-FROM quay.io/toolbx/ubuntu-toolbox:24.04
+FROM docker.io/library/ubuntu:26.04
 
-COPY ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources
+RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales curl gnupg ca-certificates; \
+    rm -rf /var/lib/apt/lists/*; \
+    echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; \
+    locale-gen; \
+    locale -a | grep 'en_US.utf8'
+ENV LANG en_US.utf8
 
 RUN echo "deb https://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list
 RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
 
-RUN apt-get update && \
-    apt-get dist-upgrade -y && \
-    apt-get install -y rsync spotify-client pipewire-audio-client-libraries fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk libnotify-bin
+RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    rsync spotify-client pipewire-audio-client-libraries flatpak-xdg-utils \
+    fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk libnotify-bin libgl1
 
-RUN mkdir -p /usr/local/share/applications /usr/local/bin
+# Enable the use of p11-kit-client.so to access CA certificates from the host
+RUN mkdir --parents /etc/pkcs11/modules
+
+RUN mkdir --parents /usr/local/share/applications /usr/local/bin
 
 COPY default-browser /usr/local/bin
 COPY entrypoint.sh /usr/local/bin
-COPY org.gnome.Epiphany.desktop /usr/share/applications
+COPY org.gnome.Epiphany.desktop /usr/local/share/applications
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 RUN chmod a+x /usr/local/bin/default-browser

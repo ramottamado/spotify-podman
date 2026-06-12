@@ -26,6 +26,8 @@ create_wrapper() {
 
 . "${HOME}/.config/user-dirs.dirs"
 
+mkdir --parent "$HOME/.local/share/spotify"
+
 if podman container exists spotify; then
 	podman container rm spotify
 
@@ -40,10 +42,11 @@ gnome-session-inhibit --app-id spotify --reason audio --inhibit suspend \
 	--log-level error \
 	--mount=type=devpts,destination=/dev/pts \
 	--mount=type=bind,source=/tmp,destination=/tmp \
-	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION --env=DISPLAY --env=LANG \
+	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION \
+	--env=DISPLAY --env WAYLAND_DISPLAY --env=LANG \
 	--env=XAUTHORITY --env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
 	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
-	--env=XDG_SESSION_DESKTOP --env=P11_KIT_SERVER_ADDRESS \
+	--env=XDG_SESSION_DESKTOP --env XDG_SESSION_TYPE --env=P11_KIT_SERVER_ADDRESS \
 	--volume /dev:/dev:rslave \
 	--volume /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
 	--volume /run/user/${EUID}:/run/user/${EUID} \
@@ -83,6 +86,9 @@ create_desktop_file() {
 
 sync_icons() {
 	echo "Syncing application icons..."
+
+	mkdir --parent "$HOME/.local/share/icons/hicolor"
+
 	podman run --rm \
 		--entrypoint '["/bin/bash", "-c"]' \
 		--security-opt label=disable \

@@ -2,11 +2,10 @@
 Description=Spotify Ubuntu Base Image Build
 
 [Service]
-Restart=on-failure
-RestartSec=30s
+ExecStartPost=/bin/buildah prune
 
 [Build]
-ImageTag=tamado.codes/library/ubuntu-spotify-base:24.04
+ImageTag=tamado.codes/library/ubuntu-spotify-base:26.04
 File=/var/home/tamado/.config/containers/systemd/Containerfile.base
 Pull=newer
 ForceRM=true
