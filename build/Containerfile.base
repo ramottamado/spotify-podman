@@ -19,7 +19,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
     rsync spotify-client pipewire-audio-client-libraries \
     flatpak-xdg-utils xdg-user-dirs xdg-utils \
     fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk \
-    libnotify-bin libgl1
+    libnotify-bin libgl1 libegl1 mesa-utils
 
 # Enable the use of p11-kit-client.so to access CA certificates from the host
 RUN mkdir --parents /etc/pkcs11/modules
