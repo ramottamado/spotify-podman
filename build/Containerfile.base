@@ -1,5 +1,7 @@
 FROM docker.io/library/ubuntu:26.04
 
+LABEL org.opencontainers.image.description="The base Ubuntu 26.04 system for containerized Spotify client."
+
 RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales curl gnupg ca-certificates; \
     rm -rf /var/lib/apt/lists/*; \
@@ -14,8 +16,10 @@ RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | g
 RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    rsync spotify-client pipewire-audio-client-libraries flatpak-xdg-utils \
-    fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk libnotify-bin libgl1
+    rsync spotify-client pipewire-audio-client-libraries \
+    flatpak-xdg-utils xdg-user-dirs xdg-utils \
+    fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk \
+    libnotify-bin libgl1
 
 # Enable the use of p11-kit-client.so to access CA certificates from the host
 RUN mkdir --parents /etc/pkcs11/modules
