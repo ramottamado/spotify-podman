@@ -37,8 +37,7 @@ if podman container exists spotify; then
 	fi
 fi
 
-gnome-session-inhibit --app-id spotify --reason audio --inhibit suspend \
-	podman container run --rm --name spotify \
+podman container run --rm --name spotify \
 	--log-level error \
 	--mount=type=devpts,destination=/dev/pts \
 	--mount=type=bind,source=/tmp,destination=/tmp \

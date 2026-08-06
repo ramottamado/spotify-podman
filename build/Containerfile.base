@@ -10,7 +10,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
     locale -a | grep 'en_US.utf8'
 ENV LANG en_US.utf8
 
-RUN echo "deb https://repository.spotify.com stable non-free" | tee /etc/apt/sources.list.d/spotify.list
+RUN echo "deb https://repository.spotify.com testing non-free" | tee /etc/apt/sources.list.d/spotify.list
 RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
@@ -19,7 +19,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
     rsync spotify-client pipewire-audio-client-libraries \
     flatpak-xdg-utils xdg-user-dirs xdg-utils \
     fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk \
-    libnotify-bin libgl1 libegl1 mesa-utils
+    libnotify-bin libgl1 libegl1 mesa-utils python3-pydbus python3-gi
 
 # Enable the use of p11-kit-client.so to access CA certificates from the host
 RUN mkdir --parents /etc/pkcs11/modules
@@ -28,7 +28,9 @@ RUN mkdir --parents /usr/local/share/applications /usr/local/bin
 
 COPY default-browser /usr/local/bin
 COPY entrypoint.sh /usr/local/bin
+COPY spotify-inhibitor.py /usr/local/bin
 COPY org.gnome.Epiphany.desktop /usr/local/share/applications
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
+RUN chmod a+x /usr/local/bin/spotify-inhibitor.py
 RUN chmod a+x /usr/local/bin/default-browser

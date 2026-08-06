@@ -8,4 +8,10 @@ mkdir -p "$xdg_app_dir"
 
 xdg-settings set default-web-browser org.gnome.Epiphany.desktop
 
-exec -a "$0" "/usr/share/spotify/spotify" "$@"
+(python3 "/usr/local/bin/spotify-inhibitor.py") &
+
+(/usr/share/spotify/spotify "$@") &
+
+wait -n
+
+kill 0
