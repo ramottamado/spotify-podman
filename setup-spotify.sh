@@ -2,8 +2,23 @@
 
 set -ex
 
+QUADLET_DIR="$HOME/.config/containers/systemd"
+
+# Reference: http://stackoverflow.com/questions/59895/can-a-bash-script-tell-what-directory-its-stored-in
+SOURCE="${BASH_SOURCE[0]}"
+BIN_DIR="$(dirname "$SOURCE")"
+while [ -h "$SOURCE" ]; do
+	SOURCE="$(readlink "$SOURCE")"
+	[[ $SOURCE != /* ]] && SOURCE="$BIN_DIR/$SOURCE"
+	BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+done
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
 main() {
 	echo "Starting Spotify setup script..."
+
+	copy_quadlet_files
+	build_images
 
 	install_spotify
 	create_wrapper
@@ -11,6 +26,27 @@ main() {
 	sync_icons
 
 	echo "Spotify setup script completed successfully."
+}
+
+copy_quadlet_files() {
+	echo "Installing quadlet files..."
+
+	mkdir -p "$QUADLET_DIR"
+	cp -r "${BIN_DIR}/quadlet/spotify" "$QUADLET_DIR"
+	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify-base.build.in" >"${QUADLET_DIR}/spotify-base.build"
+	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify.build.in" >"${QUADLET_DIR}/spotify.build"
+}
+
+build_images() {
+	read -rp "Please select whether you want to build the images now [Y/n]: " -n 1
+	echo ""
+	if [[ -z $REPLY || $REPLY =~ ^[Yy]$ ]]; then
+		systemctl --user daemon-reload
+		systemctl --user start spotify-base-build
+		systemctl --user start spotify-build
+	else
+		echo "Skipping build images."
+	fi
 }
 
 install_spotify() {

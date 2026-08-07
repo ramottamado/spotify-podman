@@ -97,7 +97,7 @@ class SpotifyInhibitorDaemon:
             print("▶ Spotify started. Inhibiting GNOME session idle/suspend...")
             try:
                 self.cookie = self.sm.Inhibit(
-                    "Spotify Inhibitor",
+                    "Spotify",
                     0,
                     "Spotify is currently playing",
                     INHIBIT_SUSPEND,

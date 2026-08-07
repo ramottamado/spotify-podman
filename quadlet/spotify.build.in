@@ -7,7 +7,8 @@ ExecStartPost=/bin/podman image prune -f
 
 [Build]
 ImageTag=tamado.codes/library/spotify:latest
-File=/var/home/tamado/.config/containers/systemd/Containerfile
+SetWorkingDirectory=%HOMEDIR%/.config/containers/systemd/spotify
+File=Containerfile
 Pull=never
 ForceRM=true
 PodmanArgs=--no-cache

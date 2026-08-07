@@ -6,6 +6,7 @@ ExecStartPost=/bin/buildah prune
 
 [Build]
 ImageTag=tamado.codes/library/ubuntu-spotify-base:26.04
-File=/var/home/tamado/.config/containers/systemd/Containerfile.base
+SetWorkingDirectory=%HOMEDIR%/.config/containers/systemd/spotify
+File=Containerfile.base
 Pull=newer
 ForceRM=true
