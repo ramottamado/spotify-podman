@@ -31,10 +31,18 @@ main() {
 copy_quadlet_files() {
 	echo "Installing quadlet files..."
 
-	mkdir -p "$QUADLET_DIR"
-	cp -r "${BIN_DIR}/quadlet/spotify" "$QUADLET_DIR"
-	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify-base.build.in" >"${QUADLET_DIR}/spotify-base.build"
-	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify.build.in" >"${QUADLET_DIR}/spotify.build"
+	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify-base.build.in" >"/tmp/spotify-base.build"
+	sed -E "s|%HOMEDIR%|${HOME}|g" "${BIN_DIR}/quadlet/spotify.build.in" >"/tmp/spotify.build"
+
+	if podman quadlet list; then
+		podman quadlet install --replace --reload-systemd /tmp/spotify-base.build
+		podman quadlet install --replace --reload-systemd /tmp/spotify.build
+	else
+		mkdir -p "$QUADLET_DIR"
+		cp -r "${BIN_DIR}/quadlet/spotify" "$QUADLET_DIR"
+		cp -p /tmp/spotify-base.build "$QUADLET_DIR"
+		cp -p /tmp/spotify.build "$QUADLET_DIR"
+	fi
 }
 
 build_images() {
