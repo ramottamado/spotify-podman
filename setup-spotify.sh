@@ -95,12 +95,12 @@ podman container run --rm --name spotify \
 	--volume /run/user/${EUID}:/run/user/${EUID} \
 	--volume /run/avahi-daemon/socket:/run/avahi-daemon/socket \
 	--volume /run/media:/run/media:rslave \
-	--volume "$HOME/.local/share/spotify:/root" \
+	--volume "$HOME/.local/share/spotify:/home/spotify" \
 	--volume "$XDG_DOWNLOAD_DIR:$XDG_DOWNLOAD_DIR:ro" \
 	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
 	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
 	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
-	--security-opt=label=disable --user root:root \
+	--security-opt=label=disable --userns=keep-id \
 	--cgroupns=host --ulimit=host --network=host --ipc=host --uts=host \
 	tamado.codes/library/spotify:latest "$@"
 EOF
