@@ -2,20 +2,20 @@ FROM docker.io/library/ubuntu:26.04
 
 LABEL org.opencontainers.image.description="The base Ubuntu 26.04 system for containerized Spotify client."
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales curl gnupg ca-certificates; \
-    rm -rf /var/lib/apt/lists/*; \
-    echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen; \
-    locale-gen; \
-    locale -a | grep 'en_US.utf8'
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales curl gnupg ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen \
+    && locale-gen \
+    && locale -a | grep 'en_US.utf8'
 ENV LANG en_US.utf8
 
 RUN echo "deb https://repository.spotify.com testing non-free" | tee /etc/apt/sources.list.d/spotify.list
 RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     rsync spotify-client pipewire-audio-client-libraries \
     flatpak-xdg-utils xdg-user-dirs xdg-utils \
     fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk \
