@@ -1,138 +1,83 @@
 #!/usr/bin/env python3
-
-import sys
 import signal
-from pydbus import SessionBus
-from gi.repository import GLib
 
-# GNOME SessionManager.Inhibit flags
+import gi
+
+gi.require_version("GLibUnix", "2.0")
+from gi.repository import Gio, GLib, GLibUnix
+
 INHIBIT_SUSPEND = 4
-INHIBIT_IDLE = 8
+
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+players = {}  # sender -> PlaybackStatus
+cookie = None
 
 
-class SpotifyInhibitorDaemon:
-    def __init__(self):
-        self.bus = SessionBus()
-        try:
-            self.sm = self.bus.get(
-                "org.gnome.SessionManager", "/org/gnome/SessionManager"
+def session_manager(method, args):
+    return bus.call_sync(
+        "org.gnome.SessionManager",
+        "/org/gnome/SessionManager",
+        "org.gnome.SessionManager",
+        method,
+        args,
+        None,
+        Gio.DBusCallFlags.NONE,
+        -1,
+        None,
+    )
+
+
+def update():
+    global cookie
+    playing = "Playing" in players.values()
+    try:
+        if playing and cookie is None:
+            reply = session_manager(
+                "Inhibit",
+                GLib.Variant(
+                    "(susu)", ("Spotify", 0, "Spotify is playing", INHIBIT_SUSPEND)
+                ),
             )
-        except Exception as e:
-            print(f"Error: GNOME SessionManager not found. ({e})", file=sys.stderr)
-            sys.exit(1)
-
-        self.cookie = None
-        self.players = {}  # Map[unique_name (str) -> PlaybackStatus (str)]
-
-        # 1. Fetch current status of any already-open Spotify instances
-        dbus_proxy = self.bus.get(".DBus")
-        for name in dbus_proxy.ListNames():
-            if name.startswith("org.mpris.MediaPlayer2.spotify"):
-                try:
-                    unique_name = dbus_proxy.GetNameOwner(name)
-                    self._update_player_status(unique_name)
-                except Exception:
-                    continue
-
-        # 2. Monitor for Play/Pause/Stop actions
-        self.bus.subscribe(
-            iface="org.freedesktop.DBus.Properties",
-            signal="PropertiesChanged",
-            arg0="org.mpris.MediaPlayer2.Player",
-            signal_fired=self._on_properties_changed,
-        )
-
-        # 3. Monitor for Spotify opening, closing, or crashing
-        self.bus.subscribe(
-            sender="org.freedesktop.DBus",
-            iface="org.freedesktop.DBus",
-            signal="NameOwnerChanged",
-            signal_fired=self._on_name_owner_changed,
-        )
-
-    def _update_player_status(self, unique_name):
-        try:
-            # This is a blocking call in pydbus, so we don't have to worry about
-            # overlapping signals modifying the state while we wait.
-            player = self.bus.get(unique_name, "/org/mpris/MediaPlayer2")
-            status = player.PlaybackStatus
-            self.players[unique_name] = status
-        except Exception:
-            # Ignore if Spotify crashes mid-request
-            pass
-        finally:
-            self._evaluate_inhibit()
-
-    def _on_properties_changed(self, sender, object_path, iface, signal, params):
-        interface_name, changed_properties, invalidated_properties = params
-
-        # STRICT GATEKEEPER: Only care if the sender is a known Spotify instance
-        if sender in self.players and "PlaybackStatus" in changed_properties:
-            self.players[sender] = changed_properties["PlaybackStatus"]
-            self._evaluate_inhibit()
-
-    def _on_name_owner_changed(self, sender, object_path, iface, signal, params):
-        name, old_owner, new_owner = params
-
-        # Case A: A Spotify instance appeared or closed gracefully
-        if name.startswith("org.mpris.MediaPlayer2.spotify"):
-            if old_owner and old_owner in self.players:
-                del self.players[old_owner]
-                self._evaluate_inhibit()
-
-            if new_owner:
-                self._update_player_status(new_owner)
-
-        # Case B: Ghost Crash - A Spotify process was forcefully killed (e.g. SIGKILL).
-        # It drops its raw connection ID (which starts with ':') without cleaning up.
-        elif name.startswith(":") and not new_owner:
-            if name in self.players:
-                del self.players[name]
-                self._evaluate_inhibit()
-
-    def _evaluate_inhibit(self):
-        is_playing = any(status == "Playing" for status in self.players.values())
-
-        if is_playing and self.cookie is None:
-            print("▶ Spotify started. Inhibiting GNOME session idle/suspend...")
-            try:
-                self.cookie = self.sm.Inhibit(
-                    "Spotify",
-                    0,
-                    "Spotify is currently playing",
-                    INHIBIT_SUSPEND,
-                )
-            except Exception as e:
-                print(f"Failed to inhibit GNOME: {e}")
-
-        elif not is_playing and self.cookie is not None:
+            cookie = reply.unpack()[0]
+            print("▶ Spotify playing. Inhibiting suspend...")
+        elif not playing and cookie is not None:
+            session_manager("Uninhibit", GLib.Variant("(u)", (cookie,)))
+            cookie = None
             print("⏸ Spotify paused or stopped. Removing inhibition...")
-            try:
-                self.sm.Uninhibit(self.cookie)
-            except Exception as e:
-                print(f"Failed to uninhibit GNOME: {e}")
-            self.cookie = None
-
-    def run(self):
-        loop = GLib.MainLoop()
-
-        # Natively bind POSIX interrupt signals to cleanly stop the GLib loop
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, loop.quit)
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, loop.quit)
-
-        print("Daemon started. Monitoring ONLY Spotify D-Bus signals...")
-        self._evaluate_inhibit()
-
-        loop.run()
-
-        print("\nExiting daemon...")
-        if self.cookie is not None:
-            try:
-                self.sm.Uninhibit(self.cookie)
-            except Exception as e:
-                print(f"Failed to uninhibit during exit: {e}")
+    except GLib.Error as e:
+        print(f"Inhibit call failed: {e.message}")
 
 
-if __name__ == "__main__":
-    daemon = SpotifyInhibitorDaemon()
-    daemon.run()
+def on_properties_changed(conn, sender, path, iface, sig, params, data):
+    _, changed, _ = params.unpack()
+    if "PlaybackStatus" in changed:
+        players[sender] = changed["PlaybackStatus"]
+        update()
+
+
+bus.signal_subscribe(
+    None,
+    "org.freedesktop.DBus.Properties",
+    "PropertiesChanged",
+    "/org/mpris/MediaPlayer2",
+    "org.mpris.MediaPlayer2.Player",
+    Gio.DBusSignalFlags.NONE,
+    on_properties_changed,
+    None,
+)
+
+loop = GLib.MainLoop()
+
+
+def stop(*_):
+    loop.quit()
+    return GLib.SOURCE_REMOVE
+
+
+GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, stop)
+GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, stop)
+
+loop.run()
+
+players.clear()
+update()

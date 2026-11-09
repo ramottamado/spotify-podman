@@ -39,10 +39,11 @@ copy_quadlet_files() {
 		podman quadlet install --replace --reload-systemd /tmp/spotify.build
 	else
 		mkdir -p "$QUADLET_DIR"
-		cp -r "${BIN_DIR}/quadlet/spotify" "$QUADLET_DIR"
 		cp -p /tmp/spotify-base.build "$QUADLET_DIR"
 		cp -p /tmp/spotify.build "$QUADLET_DIR"
 	fi
+
+	cp -r "${BIN_DIR}/quadlet/spotify" "$QUADLET_DIR"
 }
 
 build_images() {
@@ -65,45 +66,7 @@ install_spotify() {
 }
 
 create_wrapper() {
-	cat <<'EOF' >"$HOME"/.local/bin/spotify
-#!/bin/bash
-
-. "${HOME}/.config/user-dirs.dirs"
-
-mkdir --parent "$HOME/.local/share/spotify"
-
-if podman container exists spotify; then
-	podman container rm spotify
-
-	if [[ $?!=0 ]]; then
-		podman container exec spotify spotify "$@"
-		exit 0
-	fi
-fi
-
-podman container run --rm --name spotify \
-	--log-level error \
-	--mount=type=devpts,destination=/dev/pts \
-	--mount=type=bind,source=/tmp,destination=/tmp \
-	--env=DBUS_SESSION_BUS_ADDRESS --env=DESKTOP_SESSION \
-	--env=DISPLAY --env WAYLAND_DISPLAY --env=LANG \
-	--env=XAUTHORITY --env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
-	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
-	--env=XDG_SESSION_DESKTOP --env XDG_SESSION_TYPE --env=P11_KIT_SERVER_ADDRESS \
-	--volume /dev:/dev:rslave \
-	--volume /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
-	--volume /run/user/${EUID}:/run/user/${EUID} \
-	--volume /run/avahi-daemon/socket:/run/avahi-daemon/socket \
-	--volume /run/media:/run/media:rslave \
-	--volume "$HOME/.local/share/spotify:/home/spotify" \
-	--volume "$XDG_DOWNLOAD_DIR:$XDG_DOWNLOAD_DIR:ro" \
-	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
-	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
-	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
-	--security-opt=label=disable --userns=keep-id \
-	--cgroupns=host --ulimit=host --network=host --ipc=host --uts=host \
-	tamado.codes/library/spotify:latest "$@"
-EOF
+	cp -f "${BIN_DIR}/bin/spotify" "$HOME"/.local/bin/spotify
 
 	chmod +x "$HOME"/.local/bin/spotify
 	echo "Created Spotify launcher script at $HOME/.local/bin/spotify"
@@ -111,6 +74,7 @@ EOF
 
 create_desktop_file() {
 	podman run --rm \
+		--user 0 \
 		--entrypoint '["/bin/bash", "-c"]' \
 		--security-opt label=disable \
 		tamado.codes/library/spotify:latest \
@@ -133,6 +97,7 @@ sync_icons() {
 	mkdir --parent "$HOME/.local/share/icons/hicolor"
 
 	podman run --rm \
+		--user 0 \
 		--entrypoint '["/bin/bash", "-c"]' \
 		--security-opt label=disable \
 		--volume "$HOME/.local/share/icons/hicolor:/hicolor" \

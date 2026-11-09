@@ -1,0 +1,59 @@
+#!/bin/bash
+
+: "${WAYLAND_DISPLAY:?no Wayland session}"
+: "${XAUTHORITY:?no Xwayland auth file}"
+
+. "${HOME}/.config/user-dirs.dirs"
+mkdir -p "$HOME/.local/share/spotify"
+
+# If already running, pass args to the existing instance
+if podman container exists spotify; then
+	if ! podman container rm spotify 2>/dev/null; then
+		podman container exec spotify spotify "$@"
+		exit 0
+	fi
+fi
+
+PROXY_SOCK="$XDG_RUNTIME_DIR/spotify-bus"
+rm -f "$PROXY_SOCK"
+
+# Filtered session bus for the container
+xdg-dbus-proxy "${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}" "$PROXY_SOCK" \
+	--filter \
+	--talk=org.freedesktop.Notifications \
+	--own=org.mpris.MediaPlayer2.spotify \
+	--own='org.mpris.MediaPlayer2.spotify.*' \
+	--call='org.freedesktop.portal.Desktop=org.freedesktop.portal.OpenURI.*@/org/freedesktop/portal/desktop' \
+	--call='org.freedesktop.portal.Desktop=org.freedesktop.portal.Settings.*@/org/freedesktop/portal/desktop' \
+	--call=org.gnome.SessionManager=org.gnome.SessionManager.Inhibit@/org/gnome/SessionManager \
+	--call=org.gnome.SessionManager=org.gnome.SessionManager.Uninhibit@/org/gnome/SessionManager \
+	--broadcast=org.mpris.MediaPlayer2.spotify=org.freedesktop.DBus.Properties.PropertiesChanged@/org/mpris/MediaPlayer2 &
+PROXY_PID=$!
+
+trap 'kill $PROXY_PID 2>/dev/null; rm -f "$PROXY_SOCK"' EXIT
+
+while [ ! -S "$PROXY_SOCK" ]; do sleep 0.1; done
+
+# No exec: the trap must run after the container exits
+podman container run --rm --name spotify \
+	--log-level error \
+	--env=DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${EUID}/bus" --env=DESKTOP_SESSION \
+	--env=DISPLAY --env=WAYLAND_DISPLAY --env=LANG --env=XAUTHORITY \
+	--env=XDG_CURRENT_DESKTOP --env=XDG_DATA_DIRS \
+	--env=XDG_MENU_PREFIX --env=XDG_RUNTIME_DIR --env=XDG_SESSION_CLASS \
+	--env=XDG_SESSION_DESKTOP --env=XDG_SESSION_TYPE \
+	--mount=type=tmpfs,destination=/run/user/${EUID},tmpfs-mode=0700,U=true \
+	--volume "$XAUTHORITY:$XAUTHORITY:ro" \
+	--volume "$PROXY_SOCK:/run/user/${EUID}/bus" \
+	--volume "$XDG_RUNTIME_DIR/pipewire-0:/run/user/${EUID}/pipewire-0" \
+	--volume "$XDG_RUNTIME_DIR/pulse:/run/user/${EUID}/pulse" \
+	--device /dev/dri \
+	--volume "$HOME/.local/share/spotify:/home/spotify" \
+	--volume "$XDG_DOWNLOAD_DIR:$XDG_DOWNLOAD_DIR:ro" \
+	--volume "$XDG_MUSIC_DIR:$XDG_MUSIC_DIR:ro" \
+	--volume "$XDG_PICTURES_DIR:$XDG_PICTURES_DIR:ro" \
+	--volume "$XDG_VIDEOS_DIR:$XDG_VIDEOS_DIR:ro" \
+	--security-opt=label=disable --userns=keep-id \
+	--network=host --ipc=host \
+	--security-opt=no-new-privileges --cap-drop=all \
+	tamado.codes/library/spotify:latest "$@"

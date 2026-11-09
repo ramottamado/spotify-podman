@@ -2,17 +2,11 @@ FROM tamado.codes/library/ubuntu-spotify-base:26.04
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN userdel -r ubuntu || true
-
-RUN groupadd -g 1000 spotify \
+    && rm -rf /var/lib/apt/lists/* \
+    && (userdel -r ubuntu || true) \
+    && groupadd -g 1000 spotify \
     && useradd -u 1000 -g spotify -m -d /home/spotify -s /bin/bash spotify
 
-VOLUME ["/home/spotify"]
-
 WORKDIR /home/spotify
-
 USER spotify
-
-ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

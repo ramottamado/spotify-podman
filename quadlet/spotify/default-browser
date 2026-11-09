@@ -1,4 +1,16 @@
-#!/bin/sh
+#!/usr/bin/env python3
+import sys
+from gi.repository import Gio, GLib
 
-# We set directory because default mountpoint is not available on the host
-/usr/libexec/flatpak-xdg-utils/flatpak-spawn --host --directory=/tmp /usr/bin/xdg-open "$@"
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+bus.call_sync(
+    "org.freedesktop.portal.Desktop",
+    "/org/freedesktop/portal/desktop",
+    "org.freedesktop.portal.OpenURI",
+    "OpenURI",
+    GLib.Variant("(ssa{sv})", ("", sys.argv[1], {})),
+    None,
+    Gio.DBusCallFlags.NONE,
+    -1,
+    None,
+)

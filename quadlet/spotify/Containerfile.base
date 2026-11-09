@@ -3,34 +3,23 @@ FROM docker.io/library/ubuntu:26.04
 LABEL org.opencontainers.image.description="The base Ubuntu 26.04 system for containerized Spotify client."
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales curl gnupg ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates locales \
     && echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen \
     && locale-gen \
-    && locale -a | grep 'en_US.utf8'
+    && locale -a | grep 'en_US.utf8' \
+    && rm -rf /var/lib/apt/lists/*
 ENV LANG en_US.utf8
 
-RUN echo "deb https://repository.spotify.com testing non-free" | tee /etc/apt/sources.list.d/spotify.list
-RUN curl -sS https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
+ADD --chmod=644 https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.asc /etc/apt/keyrings/spotify.asc
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
+RUN echo "deb [signed-by=/etc/apt/keyrings/spotify.asc] https://repository.spotify.com testing non-free" \
+    > /etc/apt/sources.list.d/spotify.list \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    rsync spotify-client pipewire-audio-client-libraries \
-    flatpak-xdg-utils xdg-user-dirs xdg-utils \
+    spotify-client pipewire-audio-client-libraries xdg-utils \
     fonts-noto-core fonts-noto-color-emoji fonts-noto-cjk \
-    libnotify-bin libgl1 libegl1 mesa-utils python3-pydbus python3-gi
+    libgl1 libegl1 python3-gi rsync \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable the use of p11-kit-client.so to access CA certificates from the host
-RUN mkdir --parents /etc/pkcs11/modules
-
-RUN mkdir --parents /usr/local/share/applications /usr/local/bin
-
-COPY default-browser /usr/local/bin
-COPY entrypoint.sh /usr/local/bin
-COPY spotify-inhibitor.py /usr/local/bin
-COPY org.gnome.Epiphany.desktop /usr/local/share/applications
-
-RUN chmod a+x /usr/local/bin/entrypoint.sh
-RUN chmod a+x /usr/local/bin/spotify-inhibitor.py
-RUN chmod a+x /usr/local/bin/default-browser
+COPY --chmod=644 org.gnome.Epiphany.desktop /usr/local/share/applications/
+COPY --chmod=755 entrypoint.sh spotify-inhibitor.py default-browser /usr/local/bin/
