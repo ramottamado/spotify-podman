@@ -1,8 +1,10 @@
 ROOT        := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD_DIR   := $(ROOT)/build
 QUADLET_DIR := $(HOME)/.config/containers/systemd
+SYSTEMD_DIR := $(HOME)/.config/systemd/user
 BIN_DIR     := $(HOME)/.local/bin
 APPS_DIR    := $(HOME)/.local/share/applications
+DATA_DIR    := $(HOME)/.local/share/spotify
 ICONS_DIR   := $(HOME)/.local/share/icons/hicolor
 
 IMAGE       := tamado.codes/library/spotify:latest
@@ -27,11 +29,11 @@ PODMAN_ROOT_SHELL = $(PODMAN) run --rm --user 0 \
 	--security-opt label=disable
 
 .NOTPARALLEL:
-.PHONY: all install quadlet build check-image launcher desktop icons uninstall clean
+.PHONY: all install quadlet build timer check-image launcher desktop icons uninstall clean
 
 all: install
 
-install: quadlet $(if $(filter yes,$(BUILD)),build) check-image launcher desktop icons
+install: quadlet $(if $(filter yes,$(BUILD)),build) check-image launcher desktop icons timer
 	@echo "Spotify setup completed successfully."
 
 ## Render the .build.in templates and install them plus the build context.
@@ -46,7 +48,8 @@ quadlet: $(addprefix $(BUILD_DIR)/,$(BUILD_UNITS))
 	else \
 		cp -p $^ $(QUADLET_DIR)/; \
 	fi
-	cp -r $(ROOT)/quadlet/spotify $(QUADLET_DIR)/
+	rm -rf $(QUADLET_DIR)/spotify
+	cp -r $(ROOT)/image $(QUADLET_DIR)/spotify
 
 ## Build the base image, then the Spotify image (oneshot units; start blocks).
 build: quadlet
@@ -54,11 +57,18 @@ build: quadlet
 	$(SYSTEMCTL) --user start spotify-base-build
 	$(SYSTEMCTL) --user start spotify-build
 
+## Weekly rebuild (picks up Spotify updates). Requires the quadlet units.
+timer:
+	install -Dm644 $(ROOT)/systemd/spotify-build.timer $(SYSTEMD_DIR)/spotify-build.timer
+	$(SYSTEMCTL) --user daemon-reload
+	$(SYSTEMCTL) --user enable --now spotify-build.timer
+
 check-image:
 	@$(PODMAN) image exists $(IMAGE) || { echo "Please build the Spotify image first (make build)."; exit 1; }
 
 launcher:
 	install -Dm755 $(ROOT)/bin/spotify $(BIN_DIR)/spotify
+	mkdir -p $(DATA_DIR)
 	@echo "Created Spotify launcher script at $(BIN_DIR)/spotify"
 
 desktop: check-image
@@ -76,6 +86,8 @@ icons: check-image
 ## Remove everything install created. The running container (if any) is
 ## removed first so the images can be deleted.
 uninstall:
+	-$(SYSTEMCTL) --user disable --now spotify-build.timer
+	rm -f $(SYSTEMD_DIR)/spotify-build.timer
 	-$(PODMAN) container rm --force --ignore spotify
 	$(PODMAN) image rm --ignore $(IMAGE) $(BASE_IMAGE)
 	if $(PODMAN) quadlet list >/dev/null 2>&1; then \
@@ -87,7 +99,7 @@ uninstall:
 	rm -f $(APPS_DIR)/spotify.desktop
 	if [ -d $(ICONS_DIR) ]; then find $(ICONS_DIR) -name spotify-client.png -delete; fi
 	rm -f $(BIN_DIR)/spotify
-	@echo "Spotify uninstalled. Profile data in $(HOME)/.local/share/spotify was kept."
+	@echo "Spotify uninstalled. Profile data in $(DATA_DIR) was kept."
 
 clean:
 	rm -rf $(BUILD_DIR)

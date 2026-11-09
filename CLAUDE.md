@@ -10,10 +10,11 @@ Runs the Spotify desktop client in a rootless Podman container on a Wayland (GNO
 
 Run these on the host. Use `make -n <target>` to preview a target anywhere.
 ```sh
-make install            # quadlet + build + launcher + desktop + icons
+make install            # quadlet + build + launcher + desktop + icons + timer
 make install BUILD=no   # same, but skip rebuilding the images
 make quadlet            # render *.build.in into build/ and install units + build context
 make build              # quadlet, then start spotify-base-build and spotify-build (blocking oneshots)
+make timer              # install + enable the weekly spotify-build.timer (user unit)
 make launcher           # install bin/spotify -> ~/.local/bin/spotify
 make desktop icons      # extract the .desktop file and hicolor icons from the built image
 make uninstall          # remove container, images, quadlet units + context, launcher, .desktop, icons
@@ -21,7 +22,7 @@ make clean              # remove the build/ scratch dir
 IN_TOOLBOX=yes|no      # auto-detected via /run/.toolboxenv; in toolbox, podman/systemctl run on the host via flatpak-spawn
 journalctl --user -u spotify-build -f
 ```
-After editing anything under `quadlet/spotify/`, run `make build`. It copies the build context into `~/.config/containers/systemd/spotify` before it rebuilds.
+After editing anything under `image/`, run `make build`. It copies the build context into `~/.config/containers/systemd/spotify` before it rebuilds.
 
 Run: `~/.local/bin/spotify [args]` (a copy of `bin/spotify`).
 
@@ -29,11 +30,10 @@ The devcontainer (`.devcontainer/`) is only for editing. It has no Podman, syste
 
 ## Architecture
 
-**Two-stage image build via Quadlet.** `quadlet/*.build.in` are templates. `make quadlet` replaces `%HOMEDIR%` with `$HOME` and installs them, using `podman quadlet install` when it's available and otherwise copying them into `~/.config/containers/systemd/`. It also copies the whole `quadlet/spotify/` directory there, because both builds use it as their working directory and build context.
+**Two-stage image build via Quadlet.** `quadlet/*.build.in` are templates. `make quadlet` replaces `%HOMEDIR%` with `$HOME` and installs them, using `podman quadlet install` when it's available and otherwise copying them into `~/.config/containers/systemd/`. It also copies the whole `image/` directory there as `spotify`, because both builds use it as their working directory and build context.
 - `Containerfile.base` (`Pull=newer`) is Ubuntu 26.04 plus the Spotify apt repo and runtime deps (`spotify-client`, fonts, GL, `python3-gi`, `rsync`). It also installs the helper scripts into `/usr/local/bin`.
 - `Containerfile` (`Pull=never`, `--no-cache`) builds on the local base image. It runs `dist-upgrade` and creates the UID/GID 1000 `spotify` user (replacing the stock `ubuntu` user). Because of `--no-cache`, every rebuild picks up Spotify updates.
-- `systemd/spotify-build.timer` is meant to trigger a weekly rebuild. Nothing installs it.
-- `quadlet/spotify/ubuntu.sources` (a noble mirror) is not referenced by either Containerfile.
+- `systemd/spotify-build.timer` triggers the weekly rebuild; `make timer` (part of `make install`) installs and enables it.
 
 **Host launcher (`bin/spotify`).** It needs `WAYLAND_DISPLAY` and `XAUTHORITY`. If a `spotify` container is already running, it forwards the args with `podman exec`, so the client stays single-instance. Otherwise it starts `xdg-dbus-proxy` on `$XDG_RUNTIME_DIR/spotify-bus` and mounts that socket as the container's session bus. The container runs with `--userns=keep-id`, `--cap-drop=all` and host network/IPC. It also gets PipeWire/Pulse sockets, `/dev/dri`, and the XDG user dirs read-only. `~/.local/share/spotify` is persisted as the container's `/home/spotify`.
 
